@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  esn-pwa-frontend:
+    container_name: esn-pwa-frontend
+    build:
+      context: ./esn-pwa-frontend
+    environment:
+      - WATCHPACK_POLLING=true
+    command: npm start
+    volumes:
+      - ./esn-pwa-frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    stdin_open: true
+
+  esn-pwa-db:
+    container_name: esn-pwa-db
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASS}
+      - POSTGRES_DATABASE=${DATABASE_NAME}
+    ports:
+      - "5432:5432"
+    
+  esn-pwa-backend:
+    container_name: esn-pwa-backend
+    build:
+      context: ./esn-pwa-backend-op
+    volumes:
+      - ./esn-pwa-backend-op:/app
+    environment:
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASS=${DATABASE_PASS}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - APP_FRONTEND_URL=${APP_FRONTEND_URL}
+      - APP_BACKEND_URL=${APP_BACKEND_OP_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - TIMEZONE=${TIMEZONE}
+    ports:
+      - "8000:8000"
+    restart: always
+    depends_on:
+      - esn-pwa-db

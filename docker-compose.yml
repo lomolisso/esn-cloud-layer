@@ -1,22 +1,8 @@
 version: "3.8"
-
+name: esn
 services:
-  esn-pwa-frontend:
-    container_name: esn-pwa-frontend
-    build:
-      context: ./esn-pwa-frontend
-    environment:
-      - WATCHPACK_POLLING=true
-    command: npm start
-    volumes:
-      - ./esn-pwa-frontend:/app
-      - /app/node_modules
-    ports:
-      - "3000:3000"
-    stdin_open: true
-
-  esn-pwa-db:
-    container_name: esn-pwa-db
+  app-database:
+    container_name: app-database
     image: postgres
     restart: always
     environment:
@@ -25,24 +11,83 @@ services:
       - POSTGRES_DATABASE=${DATABASE_NAME}
     ports:
       - "5432:5432"
-    
-  esn-pwa-backend:
-    container_name: esn-pwa-backend
+    networks:
+      - esn-cloud-layer-network
+
+  app-backend:
+    container_name: esn-app-backend
     build:
-      context: ./esn-pwa-backend-op
+      context: ./esn-app-backend-op
     volumes:
-      - ./esn-pwa-backend-op:/app
+      - ./esn-app-backend-op:/app
     environment:
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASS=${DATABASE_PASS}
       - DATABASE_NAME=${DATABASE_NAME}
       - DATABASE_HOST=${DATABASE_HOST}
-      - APP_FRONTEND_URL=${APP_FRONTEND_URL}
-      - APP_BACKEND_URL=${APP_BACKEND_OP_URL}
+      - ESN_PRED_NODE_URL=${ESN_PRED_NODE_URL}
       - SECRET_KEY=${SECRET_KEY}
-      - TIMEZONE=${TIMEZONE}
     ports:
-      - "8000:8000"
+      - "8010:8010"
     restart: always
     depends_on:
-      - esn-pwa-db
+      - app-database
+    networks:
+      - esn-cloud-layer-network
+
+  cloud-redis:
+    container_name: cloud-redis
+    image: redis:7.0-alpine
+    command: redis-server --port 6380
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 6380
+        published: "6380"
+        protocol: tcp
+    restart: always
+    networks:
+      - esn-cloud-layer-network
+
+  # --- ESN Cloud Predictive Node ---
+  predictive-node:
+    container_name: predictive-node
+    build:
+      context: ./esn-gateway-microservices/esn-predictive-node
+      dockerfile: Dockerfile.cloud
+    volumes:
+      - ./esn-gateway-microservices/esn-predictive-node:/app
+    environment:
+      SECRET_KEY: "${SECRET_KEY}"
+      ESN_API_URL: "${ESN_API_URL}"
+      USE_TFLITE: "${USE_TFLITE}"
+      ESN_REDIS_URL: "${ESN_REDIS_URL}"
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+    ports:
+      - "8011:8011"
+    depends_on:
+      - cloud-redis
+    networks:
+      - esn-cloud-layer-network
+
+  celery-worker:
+    container_name: celery-worker
+    build:
+      context: ./esn-predictive-node/app/celery_worker
+      dockerfile: Dockerfile.cloud
+    volumes:
+      - ./esn-predictive-node:/app
+    environment:
+      USE_TFLITE: "${USE_TFLITE}"
+      ESN_REDIS_URL: "${ESN_REDIS_URL}"
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
+    depends_on:
+      - predictive-node
+      - cloud-redis
+    networks:
+      - esn-cloud-layer
+
+networks:
+  esn-cloud-layer-network:
+    name: esn-cloud-layer-network
+    driver: bridge

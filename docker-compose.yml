@@ -8,25 +8,27 @@ services:
     environment:
       - POSTGRES_USER=${DATABASE_USER}
       - POSTGRES_PASSWORD=${DATABASE_PASS}
-      - POSTGRES_DATABASE=${DATABASE_NAME}
+      - POSTGRES_DB=${DATABASE_NAME}
+    expose:
+      - "5432"
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - esn-cloud-layer-network
 
   app-backend:
     container_name: esn-app-backend
     build:
-      context: ./esn-app-backend-op
+      context: ./esn-app-backend
     volumes:
-      - ./esn-app-backend-op:/app
+      - ./esn-app-backend:/app
     environment:
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASS=${DATABASE_PASS}
       - DATABASE_NAME=${DATABASE_NAME}
       - DATABASE_HOST=${DATABASE_HOST}
       - ESN_PRED_NODE_URL=${ESN_PRED_NODE_URL}
-      - SECRET_KEY=${SECRET_KEY}
+      - SECRET_KEY=${ESN_CLOUD_APP_BACKEND_SECRET_KEY}
     ports:
       - "8010:8010"
     restart: always
@@ -53,15 +55,13 @@ services:
   predictive-node:
     container_name: predictive-node
     build:
-      context: ./esn-gateway-microservices/esn-predictive-node
+      context: ./esn-predictive-node
       dockerfile: Dockerfile.cloud
     volumes:
-      - ./esn-gateway-microservices/esn-predictive-node:/app
+      - ./esn-predictive-node:/app
     environment:
-      SECRET_KEY: "${SECRET_KEY}"
-      ESN_API_URL: "${ESN_API_URL}"
-      USE_TFLITE: "${USE_TFLITE}"
-      ESN_REDIS_URL: "${ESN_REDIS_URL}"
+      SECRET_KEY: "${ESN_PRED_NODE_SECRET_KEY}"
+      ESN_API_URL: "${ESN_CLOUD_APP_BACKEND_URL}"
       CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
     ports:
       - "8011:8011"
@@ -79,13 +79,13 @@ services:
       - ./esn-predictive-node:/app
     environment:
       USE_TFLITE: "${USE_TFLITE}"
-      ESN_REDIS_URL: "${ESN_REDIS_URL}"
+      ESN_API_URL: "${ESN_CLOUD_APP_BACKEND_URL}"
       CELERY_BROKER_URL: "${CELERY_BROKER_URL}"
     depends_on:
       - predictive-node
       - cloud-redis
     networks:
-      - esn-cloud-layer
+      - esn-cloud-layer-network
 
 networks:
   esn-cloud-layer-network:

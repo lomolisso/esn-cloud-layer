@@ -1,9 +1,6 @@
 [submodule "esn-app-backend"]
 	path = esn-app-backend
 	url = git@github.com:lomolisso/esn-app-backend.git
-[submodule "esn-app-frontend"]
-	path = esn-app-frontend
-	url = git@github.com:lomolisso/esn-app-frontend
 [submodule "esn-predictive-node"]
 	path = esn-predictive-node
 	url = git@github.com:lomolisso/esn-predictive-node

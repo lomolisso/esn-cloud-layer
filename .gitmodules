@@ -1,3 +1,6 @@
 [submodule "esn-cloud-api"]
 	path = esn-cloud-api
 	url = git@github.com:lomolisso/esn-cloud-api.git
+[submodule "esn-cloud-inference-ms"]
+	path = esn-cloud-inference-ms
+	url = git@github.com:lomolisso/esn-cloud-inference-ms.git

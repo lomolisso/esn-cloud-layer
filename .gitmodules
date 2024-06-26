@@ -4,3 +4,6 @@
 [submodule "esn-cloud-inference-ms"]
 	path = esn-cloud-inference-ms
 	url = git@github.com:lomolisso/esn-cloud-inference-ms.git
+[submodule "esn-cloud-data-ms"]
+	path = esn-cloud-data-ms
+	url = git@github.com:lomolisso/esn-cloud-data-ms.git

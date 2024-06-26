@@ -7,3 +7,6 @@
 [submodule "esn-cloud-data-ms"]
 	path = esn-cloud-data-ms
 	url = git@github.com:lomolisso/esn-cloud-data-ms.git
+[submodule "esn-cloud-cmd-ms"]
+	path = esn-cloud-cmd-ms
+	url = git@github.com:lomolisso/esn-cloud-cmd-ms.git

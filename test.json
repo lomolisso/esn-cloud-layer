@@ -1,9 +1,0 @@
-{
-  "uuid": "0a3432e4-fc0d-4cbc-9733-44857d74ddc8",
-  "edgex_device_uuid": "63681157-0392-4d8b-bd3e-7176bf594d0f",
-  "working_state": true,
-  "device_name": "ESP32_2B760E",
-  "device_address": "B0:A7:32:2B:76:0E",
-  "registered_at": "2024-01-19 16:34:54.899044",
-  "gateway_uuid": "e9f827bd-5086-4c8b-a2a6-3816a58cf19c"
-}

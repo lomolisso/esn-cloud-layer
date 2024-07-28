@@ -1,0 +1,162 @@
+version: "3.8"
+name: esn-cloud-layer
+services:
+  api:
+    container_name: cloud-api
+    build:
+      context: ./esn-cloud-api
+    volumes:
+      - ./esn-cloud-api:/app
+    environment:
+      - SECRET_KEY=${CLOUD_API_SECRET_KEY}
+      - CLOUD_API_HOST=${CLOUD_API_HOST}
+      - CLOUD_API_PORT=${CLOUD_API_PORT}
+      - DATA_MICROSERVICE_URL=http://${DATA_MICROSERVICE_HOST}:${DATA_MICROSERVICE_PORT}/api/v1
+      - COMMAND_MICROSERVICE_URL=http://${COMMAND_MICROSERVICE_HOST}:${COMMAND_MICROSERVICE_PORT}/api/v1
+      - INFERENCE_MICROSERVICE_URL=http://${INFERENCE_MICROSERVICE_HOST}:${INFERENCE_MICROSERVICE_PORT}/api/v1
+      - LATENCY_BENCHMARK=${LATENCY_BENCHMARK}
+      - ADAPTIVE_INFERENCE=${ADAPTIVE_INFERENCE}
+    ports:
+      - "8000:8000"
+    restart: always
+    depends_on:
+      - cmd-ms
+      - data-ms
+      - inference-ms
+    networks:
+      - esn-cloud-layer-network
+
+  cmd-ms:
+    container_name: cloud-cmd-ms
+    build:
+      context: ./esn-cloud-cmd-ms
+    volumes:
+      - ./esn-cloud-cmd-ms:/app
+    environment:
+      - SECRET_KEY=${COMMAND_MICROSERVICE_SECRET_KEY}
+      - COMMAND_MICROSERVICE_HOST=${COMMAND_MICROSERVICE_HOST}
+      - COMMAND_MICROSERVICE_PORT=${COMMAND_MICROSERVICE_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB=${REDIS_DB_COMMAND_MICROSERVICE}
+      - CLOUD_API_URL=http://${CLOUD_API_HOST}:${CLOUD_API_PORT}/api/v1
+    ports:
+      - "8001:8001"
+    restart: always
+    depends_on:
+      - redis
+    networks:
+      - esn-cloud-layer-network
+
+  data-ms:
+    container_name: cloud-data-ms
+    build:
+      context: ./esn-cloud-data-ms
+    volumes:
+      - ./esn-cloud-data-ms:/app
+    environment:
+      - SECRET_KEY=${DATA_MICROSERVICE_SECRET_KEY}
+      - DATA_MICROSERVICE_HOST=${DATA_MICROSERVICE_HOST}
+      - DATA_MICROSERVICE_PORT=${DATA_MICROSERVICE_PORT}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASS=${DATABASE_PASS}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - CLOUD_API_URL=http://${CLOUD_API_HOST}:${CLOUD_API_PORT}/api/v1
+    ports:
+      - "8002:8002"
+    restart: always
+    depends_on:
+      - db
+    networks:
+      - esn-cloud-layer-network
+
+  inference-ms:
+    container_name: cloud-inference-ms
+    build:
+      context: ./esn-cloud-inference-ms
+      dockerfile: Dockerfile.app
+    volumes:
+      - ./esn-cloud-inference-ms:/app
+    environment:
+      - SECRET_KEY=${INFERENCE_MICROSERVICE_SECRET_KEY}
+      - INFERENCE_MICROSERVICE_HOST=${INFERENCE_MICROSERVICE_HOST}
+      - INFERENCE_MICROSERVICE_PORT=${INFERENCE_MICROSERVICE_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB_CELERY=${REDIS_DB_CELERY_INFERENCE_MICROSERVICE}
+      - REDIS_DB_HISTORY=${REDIS_DB_HISTORY_INFERENCE_MICROSERVICE}
+      - MAX_PREDICTION_HISTORY_LENGTH=${MAX_PREDICTION_HISTORY_LENGTH}
+      - ABNORMAL_PREDICTION_THRESHOLD=${ABNORMAL_PREDICTION_THRESHOLD}
+      - ABNORMAL_LABELS=${ABNORMAL_LABELS}
+      - CELERY_NUM_WORKERS=${CELERY_NUM_WORKERS}
+      - CELERY_CONCURRENCY_LEVEL=${CELERY_CONCURRENCY_LEVEL}
+      - CLOUD_API_URL=http://${CLOUD_API_HOST}:${CLOUD_API_PORT}/api/v1
+    ports:
+      - "8003:8003"
+    depends_on:
+      - redis
+    networks:
+      - esn-cloud-layer-network
+
+  inference-worker-1:
+    container_name: cloud-inference-worker-1
+    build:
+      context: ./esn-cloud-inference-ms
+      dockerfile: Dockerfile.worker
+    volumes:
+      - ./esn-cloud-inference-ms:/app
+    environment:
+      - SECRET_KEY=${INFERENCE_MICROSERVICE_SECRET_KEY}
+      - INFERENCE_MICROSERVICE_HOST=${INFERENCE_MICROSERVICE_HOST}
+      - INFERENCE_MICROSERVICE_PORT=${INFERENCE_MICROSERVICE_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_DB_CELERY=${REDIS_DB_CELERY_INFERENCE_MICROSERVICE}
+      - REDIS_DB_HISTORY=${REDIS_DB_HISTORY_INFERENCE_MICROSERVICE}
+      - MAX_PREDICTION_HISTORY_LENGTH=${MAX_PREDICTION_HISTORY_LENGTH}
+      - ABNORMAL_PREDICTION_THRESHOLD=${ABNORMAL_PREDICTION_THRESHOLD}
+      - ABNORMAL_LABELS=${ABNORMAL_LABELS}
+      - WORKER_INDEX=1
+      - CELERY_NUM_WORKERS=${CELERY_NUM_WORKERS}
+      - CELERY_CONCURRENCY_LEVEL=${CELERY_CONCURRENCY_LEVEL}
+      - CLOUD_API_URL=http://${CLOUD_API_HOST}:${CLOUD_API_PORT}/api/v1
+
+    depends_on:
+      - inference-ms
+      - redis
+    networks:
+      - esn-cloud-layer-network
+
+  db:
+    container_name: cloud-db
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASS}
+      - POSTGRES_DB=${DATABASE_NAME}
+    expose:
+      - "5432"
+    ports:
+      - "5433:5432"
+    networks:
+      - esn-cloud-layer-network
+
+  redis:
+    container_name: cloud-redis
+    image: redis:7.0-alpine
+    command: redis-server --port 6380
+    expose:
+      - "6380"
+    ports:
+      - "6380:6380"
+    restart: always
+    networks:
+      - esn-cloud-layer-network
+  
+networks:
+  esn-cloud-layer-network:
+    name: esn-cloud-layer-network
+    driver: bridge
